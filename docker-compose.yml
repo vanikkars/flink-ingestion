@@ -72,8 +72,18 @@ services:
       QUARKUS_MANAGEMENT_PORT: 9002
       NESSIE_VERSION_STORE_TYPE: ROCKSDB
       NESSIE_VERSION_STORE_PERSIST_ROCKS_DB_DATABASE_PATH: /nessie/data
+      # Warehouse name + location use a properties file (hyphens in names are
+      # ambiguous as env vars). S3 credentials stay as env vars (no ambiguity).
+      QUARKUS_CONFIG_LOCATIONS: /nessie/config/nessie.properties
+      NESSIE_CATALOG_SERVICE_S3_DEFAULT_OPTIONS_REGION: us-east-1
+      NESSIE_CATALOG_SERVICE_S3_DEFAULT_OPTIONS_PATH_STYLE_ACCESS: "true"
+      NESSIE_CATALOG_SERVICE_S3_DEFAULT_OPTIONS_ENDPOINT: http://minio:9000/
+      NESSIE_CATALOG_SERVICE_S3_DEFAULT_OPTIONS_ACCESS_KEY: "urn:nessie-secret:quarkus:nessie.catalog.secrets.minio"
+      NESSIE_CATALOG_SECRETS_MINIO_NAME: minioadmin
+      NESSIE_CATALOG_SECRETS_MINIO_SECRET: minioadmin
     volumes:
       - ./docker/nessie/data:/nessie/data
+      - ./docker/nessie/nessie.properties:/nessie/config/nessie.properties:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9002/q/health"]
       interval: 10s
@@ -147,6 +157,21 @@ services:
         /opt/flink/bin/sql-client.sh -f /sql/kafka_to_iceberg.sql
       "
 
+  # ── Jupyter Lab (DuckDB + Iceberg queries) ───────────────────────────────
+  jupyter:
+    build:
+      context: ./docker/jupyter
+    container_name: jupyter
+    ports:
+      - "8888:8888"
+    depends_on:
+      nessie:
+        condition: service_healthy
+    volumes:
+      - ./docker/jupyter/notebooks:/home/jupyter
+    networks:
+      - default
+
   # ── Kafka producer (Python, sends synthetic events) ───────────────────────
   kafka-producer:
     build:
@@ -157,5 +182,4 @@ services:
         condition: service_healthy
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      KAFKA_TOPIC: orders
       EVENTS_PER_SECOND: "2"
