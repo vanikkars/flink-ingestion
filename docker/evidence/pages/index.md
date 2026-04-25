@@ -32,10 +32,6 @@ select * from demo_lh.tx_by_status
 select * from demo_lh.users_by_country
 ```
 
-```sql orders_by_day
-select * from demo_lh.orders_by_day
-```
-
 ## Key Metrics
 
 <BigValue
@@ -57,18 +53,6 @@ select * from demo_lh.orders_by_day
   fmt=usd2
 />
 
-<BigValue
-  data={kpis}
-  value=total_orders
-  title="Total Orders"
-/>
-
-<BigValue
-  data={kpis}
-  value=total_revenue
-  title="Order Revenue ($)"
-  fmt=usd2
-/>
 
 ---
 
@@ -135,27 +119,4 @@ select * from demo_lh.orders_by_day
   y=user_count
   title="Users by Country"
   swapXY=true
-/>
-
----
-
-## Orders
-
-### Order Revenue per Day
-
-<LineChart
-  data={orders_by_day}
-  x=day
-  y=revenue
-  title="Daily Order Revenue ($)"
-  yFmt=usd0k
-/>
-
-### Order Count per Day
-
-<BarChart
-  data={orders_by_day}
-  x=day
-  y=order_count
-  title="Daily Order Count"
 />

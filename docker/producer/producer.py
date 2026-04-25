@@ -1,10 +1,9 @@
 """
 Synthetic event producer.
 
-Publishes JSON events to three Kafka topics:
+Publishes JSON events to two Kafka topics:
   - users        : user registration events
   - transactions : financial transactions referencing valid user IDs
-  - orders       : order events referencing valid customer IDs (= user IDs)
 
 Users are seeded up-front so that transactions always reference an
 existing user_id — referential integrity is guaranteed within the
@@ -20,11 +19,6 @@ transactions:
   { "transaction_id": "txn-000001", "user_id": "user-001", "amount": 49.99,
     "currency": "USD", "type": "PURCHASE", "status": "COMPLETED",
     "event_time": "2024-04-22T10:00:00.000" }
-
-orders:
-  { "order_id": "ord-00001", "customer_id": "user-001", "product_id": "prod-007",
-    "quantity": 3, "unit_price": 29.99, "status": "PLACED",
-    "event_time": "2024-04-22T10:00:00.000" }
 """
 
 import json
@@ -39,10 +33,8 @@ from kafka import KafkaProducer
 BOOTSTRAP_SERVERS = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 EVENTS_PER_SECOND = float(os.environ.get("EVENTS_PER_SECOND", "2"))
 
-N_USERS    = 50
-N_PRODUCTS = 20
+N_USERS = 50
 
-STATUSES           = ["PLACED", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED"]
 TXN_TYPES          = ["PURCHASE", "REFUND", "TRANSFER", "WITHDRAWAL", "DEPOSIT"]
 TXN_STATUSES       = ["COMPLETED", "PENDING", "FAILED", "REVERSED"]
 CURRENCIES         = ["USD", "EUR", "GBP", "CAD", "AUD"]
@@ -76,17 +68,6 @@ class TransactionEvent:
     type:           str
     status:         str
     event_time:     str
-
-
-@dataclass
-class OrderEvent:
-    order_id:    str
-    customer_id: str
-    product_id:  str
-    quantity:    int
-    unit_price:  float
-    status:      str
-    event_time:  str
 
 
 # ── Factory helpers ───────────────────────────────────────────────────────────
@@ -124,19 +105,6 @@ def make_transaction(seq: int, user_pool: list[UserEvent]) -> TransactionEvent:
     )
 
 
-def make_order(seq: int, user_pool: list[UserEvent]) -> OrderEvent:
-    user = random.choice(user_pool)
-    return OrderEvent(
-        order_id=f"ord-{seq:06d}",
-        customer_id=user.user_id,
-        product_id=f"prod-{random.randint(1, N_PRODUCTS):03d}",
-        quantity=random.randint(1, 10),
-        unit_price=round(random.uniform(5.0, 500.0), 2),
-        status=random.choice(STATUSES),
-        event_time=_now(),
-    )
-
-
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -157,24 +125,16 @@ def main() -> None:
     producer.flush()
     print("User seed complete.", flush=True)
 
-    # 2. Continuous mixed stream of transactions and orders
-    print(f"Publishing transactions & orders at {EVENTS_PER_SECOND} events/sec …", flush=True)
-    interval  = 1.0 / EVENTS_PER_SECOND
-    txn_seq   = 1
-    order_seq = 1
+    # 2. Continuous stream of transactions
+    print(f"Publishing transactions at {EVENTS_PER_SECOND} events/sec …", flush=True)
+    interval = 1.0 / EVENTS_PER_SECOND
+    txn_seq  = 1
 
     while True:
-        # Alternate: 2 transactions for every 1 order (configurable ratio)
         txn = make_transaction(txn_seq, user_pool)
         producer.send("transactions", value=asdict(txn))
         print(f"[transactions] → {asdict(txn)}", flush=True)
         txn_seq += 1
-        time.sleep(interval)
-
-        order = make_order(order_seq, user_pool)
-        producer.send("orders", value=asdict(order))
-        print(f"[orders] → {asdict(order)}", flush=True)
-        order_seq += 1
         time.sleep(interval)
 
 

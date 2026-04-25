@@ -6,45 +6,43 @@ Iceberg tables using Apache Flink, with a live BI dashboard powered by Evidence.
 ## Architecture
 
 ```
-┌──────────────┐   users / transactions / orders
-│ kafka-       │  ──────────────────────────────▶  Kafka topics (KRaft)
-│ producer     │                                         │
-│ (Python)     │                              Flink SQL connector
-└──────────────┘                                         │
-                                                         ▼
-                                             ┌───────────────────────┐
-                                             │ Flink (JobManager +   │
-                                             │        TaskManager)   │
-                                             │                       │
-                                             │  kafka_users  ──┐     │
-                                             │  kafka_txns   ──┼──▶ INSERT INTO
-                                             │  kafka_orders ──┘     │
-                                             └───────────┬───────────┘
-                                                         │ Iceberg / Parquet
-                                                         ▼
-                                             ┌───────────────────────┐
-                                             │ MinIO                 │
-                                             │ s3://iceberg-warehouse│
-                                             └───────────┬───────────┘
-                                                         │ REST catalog API
-                                                         ▼
-                                             ┌───────────────────────┐
-                                             │ Nessie                │
-                                             │ (Iceberg REST catalog)│
-                                             └──────────┬────────────┘
-                                                        │ ATTACH (REST)
-                                                        ▼
-                                             ┌───────────────────────┐
-                                             │ DuckDB                │
-                                             │ (httpfs + iceberg ext)│
-                                             └──────────┬────────────┘
-                                                        │
-                                   ┌────────────────────┴────────────────────┐
-                                   ▼                                         ▼
-                       ┌───────────────────────┐             ┌───────────────────────┐
-                       │ Evidence BI           │             │ JupyterLab            │
-                       │ (dashboard :3000)     │             │ (exploration :8888)   │
-                       └───────────────────────┘             └───────────────────────┘
+┌──────────────┐    users / transactions
+│ kafka-       │  ────────────────────────▶  Kafka topics (KRaft)
+│ producer     │                                      │
+│ (Python)     │                           Flink SQL connector
+└──────────────┘                                      │
+                                                      ▼
+                                          ┌───────────────────────┐
+                                          │ Flink (JobManager +   │
+                                          │        TaskManager)   │
+                                          │  kafka_users  ──┐     │
+                                          │  kafka_txns   ──┴──▶ INSERT INTO
+                                          └──────────┬────────────┘
+                                                     │ Iceberg / Parquet
+                                                     ▼
+                                          ┌───────────────────────┐
+                                          │ MinIO                 │
+                                          │ s3://iceberg-warehouse│
+                                          └──────────┬────────────┘
+                                                     │ REST catalog API
+                                                     ▼
+                                          ┌───────────────────────┐
+                                          │ Nessie                │
+                                          │ (Iceberg REST catalog)│
+                                          └──────────┬────────────┘
+                                                     │ ATTACH (REST)
+                                                     ▼
+                                          ┌───────────────────────┐
+                                          │ DuckDB                │
+                                          │ (httpfs + iceberg ext)│
+                                          └──────────┬────────────┘
+                                                     │
+                              ┌──────────────────────┴──────────────────────┐
+                              ▼                                              ▼
+                  ┌───────────────────────┐                ┌───────────────────────┐
+                  │ Evidence BI           │                │ JupyterLab            │
+                  │ (dashboard :3000)     │                │ (exploration :8888)   │
+                  └───────────────────────┘                └───────────────────────┘
 ```
 
 ## Services
@@ -74,7 +72,7 @@ wait at least 30 seconds before expecting data in the dashboard.
 
 ## Kafka topics & event schemas
 
-Three topics are produced continuously by the Python producer:
+Two topics are produced by the Python producer:
 
 **users**
 ```json
@@ -89,25 +87,17 @@ Three topics are produced continuously by the Python producer:
   "event_time": "2024-04-22T10:00:00.000" }
 ```
 
-**orders**
-```json
-{ "order_id": "ord-000001", "customer_id": "user-001", "product_id": "prod-007",
-  "quantity": 3, "unit_price": 29.99, "status": "PLACED",
-  "event_time": "2024-04-22T10:00:00.000" }
-```
-
-Users are seeded upfront so transactions and orders always reference a valid
-`user_id`. The producer then alternates between a transaction and an order at
-a configurable rate (default: 2 events/sec, set via `EVENTS_PER_SECOND`).
+Users are seeded upfront so transactions always reference a valid `user_id`.
+The producer then streams transactions continuously at a configurable rate
+(default: 2 events/sec, set via `EVENTS_PER_SECOND`).
 
 ## Iceberg catalog (Nessie)
 
 Flink, DuckDB (Jupyter + Evidence) all share the same catalog via Nessie's
-Iceberg REST API at `http://nessie:19120/iceberg`. The three Iceberg tables are:
+Iceberg REST API at `http://nessie:19120/iceberg`. The two Iceberg tables are:
 
 - `iceberg_catalog.demo.users`
 - `iceberg_catalog.demo.transactions`
-- `iceberg_catalog.demo.orders`
 
 ## Endpoints
 
@@ -145,7 +135,7 @@ docker exec evidence node_modules/.bin/evidence sources
 ## JupyterLab exploration
 
 Open **http://localhost:8888** and run `query_iceberg.ipynb`. It attaches
-DuckDB directly to the Nessie REST catalog and queries all three tables.
+DuckDB directly to the Nessie REST catalog and queries both tables.
 
 ## Query from Flink SQL client
 
@@ -157,7 +147,7 @@ docker exec -it flink-jobmanager /opt/flink/bin/sql-client.sh
 USE CATALOG iceberg_catalog;
 USE demo;
 
-SELECT status, COUNT(*) AS cnt FROM orders GROUP BY status;
+SELECT status, COUNT(*) AS cnt FROM transactions GROUP BY status;
 ```
 
 ## Tear down
