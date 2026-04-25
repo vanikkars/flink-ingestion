@@ -1,126 +1,163 @@
 # Kafka → Iceberg via Flink (Docker demo)
 
-A self-contained demo that streams JSON events from a Kafka topic into an
-Apache Iceberg table, with everything running locally via Docker Compose.
+A self-contained demo that streams synthetic JSON events from Kafka into Apache
+Iceberg tables using Apache Flink, with a live BI dashboard powered by Evidence.
 
 ## Architecture
 
 ```
-┌──────────────┐      JSON events       ┌─────────────────────────────┐
-│ kafka-       │  ──────────────────▶   │ Kafka topic: orders         │
-│ producer     │                        └────────────┬────────────────┘
-│ (Python)     │                                     │ Kafka SQL connector
-└──────────────┘                                     ▼
-                                        ┌─────────────────────────────┐
-                                        │ Flink (JobManager +         │
-                                        │        TaskManager)         │
-                                        │                             │
-                                        │  kafka_orders  (source)     │
-                                        │       ↓ INSERT INTO         │
-                                        │  iceberg_catalog.demo       │
-                                        │        .orders  (sink)      │
-                                        └────────────┬────────────────┘
-                                                     │ Iceberg / Parquet files
-                                                     ▼
-                                        ┌─────────────────────────────┐
-                                        │ MinIO  (s3a://iceberg-      │
-                                        │         warehouse/)         │
-                                        └────────────┬────────────────┘
-                                                     │ schema / metadata
-                                                     ▼
-                                        ┌─────────────────────────────┐
-                                        │ Hive Metastore  (:9083)     │
-                                        │  backed by Postgres         │
-                                        └─────────────────────────────┘
+┌──────────────┐   users / transactions / orders
+│ kafka-       │  ──────────────────────────────▶  Kafka topics (KRaft)
+│ producer     │                                         │
+│ (Python)     │                              Flink SQL connector
+└──────────────┘                                         │
+                                                         ▼
+                                             ┌───────────────────────┐
+                                             │ Flink (JobManager +   │
+                                             │        TaskManager)   │
+                                             │                       │
+                                             │  kafka_users  ──┐     │
+                                             │  kafka_txns   ──┼──▶ INSERT INTO
+                                             │  kafka_orders ──┘     │
+                                             └───────────┬───────────┘
+                                                         │ Iceberg / Parquet
+                                                         ▼
+                                             ┌───────────────────────┐
+                                             │ MinIO                 │
+                                             │ s3://iceberg-warehouse│
+                                             └───────────┬───────────┘
+                                                         │ REST catalog API
+                                                         ▼
+                                             ┌───────────────────────┐
+                                             │ Nessie                │
+                                             │ (Iceberg REST catalog)│
+                                             └──────────┬────────────┘
+                                                        │ ATTACH (REST)
+                                                        ▼
+                                             ┌───────────────────────┐
+                                             │ DuckDB                │
+                                             │ (httpfs + iceberg ext)│
+                                             └──────────┬────────────┘
+                                                        │
+                                   ┌────────────────────┴────────────────────┐
+                                   ▼                                         ▼
+                       ┌───────────────────────┐             ┌───────────────────────┐
+                       │ Evidence BI           │             │ JupyterLab            │
+                       │ (dashboard :3000)     │             │ (exploration :8888)   │
+                       └───────────────────────┘             └───────────────────────┘
 ```
 
 ## Services
 
-| Service            | Image                              | Exposed port     |
-|--------------------|------------------------------------|------------------|
-| zookeeper          | confluentinc/cp-zookeeper:7.6.0    | —                |
-| kafka              | confluentinc/cp-kafka:7.6.0        | 9092             |
-| minio              | minio/minio                        | 9000, 9001 (UI)  |
-| postgres           | postgres:15                        | —                |
-| metastore          | custom (apache/hive:4.0.0 base)    | 9083             |
-| flink-jobmanager   | custom (flink:1.18)                | 8081 (UI)        |
-| flink-taskmanager  | custom (flink:1.18)                | —                |
-| flink-sql-job      | custom (flink:1.18)                | —                |
-| kafka-producer     | custom (python:3.11-slim)          | —                |
+| Service             | Image / Build                              | Exposed port       |
+|---------------------|--------------------------------------------|--------------------|
+| kafka               | apache/kafka:4.0.2 (KRaft, no ZooKeeper)   | 9092               |
+| minio               | minio/minio                                | 9000, 9001 (UI)    |
+| minio-init          | minio/mc (creates bucket on first boot)    | —                  |
+| nessie              | ghcr.io/projectnessie/nessie:0.107.5       | 19120              |
+| flink-jobmanager    | custom (Flink + Iceberg + S3 JARs)         | 8081 (UI)          |
+| flink-taskmanager   | custom                                     | —                  |
+| flink-sql-job       | custom (submits SQL job then exits)        | —                  |
+| jupyter             | custom (DuckDB + Iceberg + pyiceberg)      | 8888               |
+| evidence            | custom (Node 20, Evidence 40.x)            | 3000               |
+| kafka-producer      | custom (Python 3, kafka-python)            | —                  |
 
 ## Quick start
 
 ```bash
-# Build images and start everything
 docker compose up --build
 ```
 
-First boot takes a few minutes — Maven JARs are downloaded into the Flink and
-Metastore images, Hive schema is initialised in Postgres, and the Flink SQL job
-is submitted automatically.
+First boot takes a few minutes while Docker builds the images and the Flink SQL
+job is submitted. Iceberg commits happen on Flink checkpoints (every 30 s), so
+wait at least 30 seconds before expecting data in the dashboard.
 
-### Watch events being produced
+## Kafka topics & event schemas
 
-```bash
-docker logs -f kafka-producer
+Three topics are produced continuously by the Python producer:
+
+**users**
+```json
+{ "user_id": "user-001", "name": "Alice Smith", "email": "alice.smith1@example.com",
+  "country": "US", "created_at": "2024-04-22T10:00:00.000" }
 ```
 
-### Flink UI
+**transactions**
+```json
+{ "transaction_id": "txn-000001", "user_id": "user-001", "amount": 149.99,
+  "currency": "USD", "type": "PURCHASE", "status": "COMPLETED",
+  "event_time": "2024-04-22T10:00:00.000" }
+```
 
-Open **http://localhost:8081** — you should see one running job
-(`INSERT INTO iceberg_catalog.demo.orders`).
+**orders**
+```json
+{ "order_id": "ord-000001", "customer_id": "user-001", "product_id": "prod-007",
+  "quantity": 3, "unit_price": 29.99, "status": "PLACED",
+  "event_time": "2024-04-22T10:00:00.000" }
+```
 
-### Browse Parquet files in MinIO
+Users are seeded upfront so transactions and orders always reference a valid
+`user_id`. The producer then alternates between a transaction and an order at
+a configurable rate (default: 2 events/sec, set via `EVENTS_PER_SECOND`).
 
-Open the MinIO console at **http://localhost:9001**
-(user: `minioadmin` / password: `minioadmin`) and navigate to
-`iceberg-warehouse/demo/orders/`.
+## Iceberg catalog (Nessie)
 
-### Query the Iceberg table from Flink SQL
+Flink, DuckDB (Jupyter + Evidence) all share the same catalog via Nessie's
+Iceberg REST API at `http://nessie:19120/iceberg`. The three Iceberg tables are:
+
+- `iceberg_catalog.demo.users`
+- `iceberg_catalog.demo.transactions`
+- `iceberg_catalog.demo.orders`
+
+## Endpoints
+
+| Service     | URL                                         | Credentials              |
+|-------------|---------------------------------------------|--------------------------|
+| Evidence BI | http://localhost:3000                       | —                        |
+| Flink UI    | http://localhost:8081                       | —                        |
+| JupyterLab  | http://localhost:8888                       | no password              |
+| MinIO UI    | http://localhost:9001                       | minioadmin / minioadmin  |
+| Nessie API  | http://localhost:19120/iceberg/v1/config    | —                        |
+
+## Evidence dashboard
+
+The Evidence dashboard at **http://localhost:3000** shows live metrics sourced
+from the Iceberg tables. On startup it:
+
+1. Runs `evidence sources` — connects DuckDB to Nessie via the Iceberg REST
+   catalog, executes the SQL queries in `sources/demo_lh/`, and writes
+   Parquet snapshots to `.evidence/template/static/data/`.
+2. Starts the Vite dev server which serves the dashboard at port 3000.
+
+The page (`pages/index.md`) uses inline SQL code blocks that query the
+pre-built Parquet snapshots loaded into DuckDB-WASM in the browser:
+
+```sql
+select * from demo_lh.kpis
+```
+
+To refresh data without rebuilding the container:
+
+```bash
+docker exec evidence node_modules/.bin/evidence sources
+```
+
+## JupyterLab exploration
+
+Open **http://localhost:8888** and run `query_iceberg.ipynb`. It attaches
+DuckDB directly to the Nessie REST catalog and queries all three tables.
+
+## Query from Flink SQL client
 
 ```bash
 docker exec -it flink-jobmanager /opt/flink/bin/sql-client.sh
 ```
 
-Inside the SQL client:
-
 ```sql
-CREATE CATALOG iceberg_catalog WITH (
-    'type'                      = 'iceberg',
-    'catalog-type'              = 'hive',
-    'uri'                       = 'thrift://metastore:9083',
-    'warehouse'                 = 's3a://iceberg-warehouse/',
-    'io-impl'                   = 'org.apache.iceberg.aws.s3.S3FileIO',
-    'fs.s3a.endpoint'           = 'http://minio:9000',
-    'fs.s3a.access.key'         = 'minioadmin',
-    'fs.s3a.secret.key'         = 'minioadmin',
-    'fs.s3a.path.style.access'  = 'true'
-);
-
 USE CATALOG iceberg_catalog;
 USE demo;
 
--- Batch read of committed Iceberg snapshots
-SELECT status, COUNT(*) AS cnt
-FROM orders
-GROUP BY status;
-```
-
-> Iceberg commits happen on Flink checkpoints (default every 60 s).
-> Wait at least a minute after startup before querying.
-
-## Event schema (Kafka JSON)
-
-```json
-{
-  "order_id":    "ord-000042",
-  "customer_id": "cust-017",
-  "product_id":  "prod-005",
-  "quantity":    3,
-  "unit_price":  149.99,
-  "status":      "PLACED",
-  "event_time":  "2024-04-22T10:00:00.000"
-}
+SELECT status, COUNT(*) AS cnt FROM orders GROUP BY status;
 ```
 
 ## Tear down
