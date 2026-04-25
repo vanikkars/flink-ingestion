@@ -149,7 +149,7 @@ services:
         rest.address: flink-jobmanager
         rest.port: 8081
     volumes:
-      - ./sql:/sql
+      - ./docker/flink/jobs/sql:/sql
     command: >
       /bin/bash -c "
         echo 'Waiting for TaskManager to register...' &&
