@@ -1,0 +1,161 @@
+---
+title: Flink Lakehouse Dashboard
+---
+
+# Flink Lakehouse Dashboard
+
+Real-time data ingested from Kafka into Iceberg via Apache Flink.
+
+---
+
+```sql kpis
+select * from demo_lh.kpis
+```
+
+```sql tx_amount_per_day
+select * from demo_lh.tx_amount_per_day
+```
+
+```sql tx_amount_per_user
+select * from demo_lh.tx_amount_per_user
+```
+
+```sql tx_by_type
+select * from demo_lh.tx_by_type
+```
+
+```sql tx_by_status
+select * from demo_lh.tx_by_status
+```
+
+```sql users_by_country
+select * from demo_lh.users_by_country
+```
+
+```sql orders_by_day
+select * from demo_lh.orders_by_day
+```
+
+## Key Metrics
+
+<BigValue
+  data={kpis}
+  value=total_users
+  title="Total Users"
+/>
+
+<BigValue
+  data={kpis}
+  value=total_transactions
+  title="Total Transactions"
+/>
+
+<BigValue
+  data={kpis}
+  value=total_volume
+  title="Transaction Volume ($)"
+  fmt=usd2
+/>
+
+<BigValue
+  data={kpis}
+  value=total_orders
+  title="Total Orders"
+/>
+
+<BigValue
+  data={kpis}
+  value=total_revenue
+  title="Order Revenue ($)"
+  fmt=usd2
+/>
+
+---
+
+## Transactions
+
+### Transaction Amount per Day
+
+<LineChart
+  data={tx_amount_per_day}
+  x=day
+  y=total_amount
+  title="Daily Transaction Volume ($)"
+  yFmt=usd0k
+/>
+
+### Transaction Count per Day
+
+<BarChart
+  data={tx_amount_per_day}
+  x=day
+  y=tx_count
+  title="Daily Transaction Count"
+/>
+
+### Top 20 Users by Transaction Amount
+
+<BarChart
+  data={tx_amount_per_user}
+  x=user_id
+  y=total_amount
+  title="Transaction Amount per User (Top 20)"
+  swapXY=true
+  yFmt=usd0k
+/>
+
+### Breakdown by Transaction Type
+
+<BarChart
+  data={tx_by_type}
+  x=type
+  y=total_amount
+  title="Volume by Transaction Type ($)"
+  yFmt=usd0k
+/>
+
+### Breakdown by Status
+
+<BarChart
+  data={tx_by_status}
+  x=status
+  y=tx_count
+  title="Transactions by Status"
+/>
+
+---
+
+## Users
+
+### Users per Country
+
+<BarChart
+  data={users_by_country}
+  x=country
+  y=user_count
+  title="Users by Country"
+  swapXY=true
+/>
+
+---
+
+## Orders
+
+### Order Revenue per Day
+
+<LineChart
+  data={orders_by_day}
+  x=day
+  y=revenue
+  title="Daily Order Revenue ($)"
+  yFmt=usd0k
+/>
+
+### Order Count per Day
+
+<BarChart
+  data={orders_by_day}
+  x=day
+  y=order_count
+  title="Daily Order Count"
+/>

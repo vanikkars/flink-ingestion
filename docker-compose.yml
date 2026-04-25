@@ -172,6 +172,17 @@ services:
     networks:
       - default
 
+  # ── Evidence BI (dashboard) ───────────────────────────────────────────────
+  evidence:
+    build:
+      context: ./docker/evidence
+    container_name: evidence
+    ports:
+      - "3000:3000"
+    depends_on:
+      nessie:
+        condition: service_healthy
+
   # ── Kafka producer (Python, sends synthetic events) ───────────────────────
   kafka-producer:
     build:
