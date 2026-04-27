@@ -66,7 +66,25 @@ select * from demo_lh.users_by_country
 
 ## Transactions
 
-### Transaction Amount per Day
+### High level View
+
+<Grid cols=2>
+  <BarChart
+    data={tx_by_type}
+    x=type
+    y=total_amount
+    title="Volume by Transaction Type ($)"
+    yFmt=usd0k
+  />
+  <BarChart
+    data={tx_by_status}
+    x=status
+    y=tx_count
+    title="Transactions by Status"
+  />
+</Grid>
+
+[//]: # (#### Transaction Amount per Day)
 
 <LineChart
   data={tx_amount_per_day}
@@ -76,7 +94,7 @@ select * from demo_lh.users_by_country
   yFmt=usd0k
 />
 
-### Transaction Count per Day
+#### Transaction Count per Day
 
 <BarChart
   data={tx_amount_per_day}
@@ -85,7 +103,8 @@ select * from demo_lh.users_by_country
   title="Daily Transaction Count"
 />
 
-### Transactions per Hour
+### Detailed View
+#### Transactions per Hour
 
 <BarChart
   data={tx_per_hour}
@@ -94,7 +113,7 @@ select * from demo_lh.users_by_country
   title="Transaction Count per Hour"
 />
 
-### Transactions Volume per Country
+[//]: # (#### Transactions Volume per Country)
 
 <BarChart
   data={tx_per_country}
@@ -103,7 +122,7 @@ select * from demo_lh.users_by_country
   title="Transaction Volume by Country ($)"
 />
 
-### Transactions Count per Country
+[//]: # (#### Transactions Count per Country)
 
 <BarChart
   data={tx_per_country}
@@ -112,7 +131,7 @@ select * from demo_lh.users_by_country
   title="Transaction Count by Country"
 />
 
-### Top 20 Users by Transaction Amount
+#### Top 20 Users by Transaction Amount
 
 <BarChart
   data={tx_amount_per_user}
@@ -123,24 +142,6 @@ select * from demo_lh.users_by_country
   yFmt=usd0k
 />
 
-### Breakdown by Transaction Type
-
-<BarChart
-  data={tx_by_type}
-  x=type
-  y=total_amount
-  title="Volume by Transaction Type ($)"
-  yFmt=usd0k
-/>
-
-### Breakdown by Status
-
-<BarChart
-  data={tx_by_status}
-  x=status
-  y=tx_count
-  title="Transactions by Status"
-/>
 
 ---
 
