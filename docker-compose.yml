@@ -179,6 +179,9 @@ services:
     container_name: evidence
     ports:
       - "3000:3000"
+    volumes:
+      - ./docker/evidence/pages:/app/pages
+      - ./docker/evidence/sources:/app/sources
     depends_on:
       nessie:
         condition: service_healthy

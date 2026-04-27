@@ -2,12 +2,12 @@ FROM node:20-slim
 
 WORKDIR /app
 
-# Install dependencies first (cache layer)
+# Install dependencies (pages/ and sources/ are mounted at runtime)
 COPY package.json ./
 RUN npm install --legacy-peer-deps --include=dev
 
-# Copy project files
-COPY . .
+# Copy config (pages/ and sources/ are volume-mounted for live editing)
+COPY evidence.config.yaml ./
 
 EXPOSE 3000
 

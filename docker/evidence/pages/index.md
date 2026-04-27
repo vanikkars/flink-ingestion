@@ -20,6 +20,14 @@ select * from demo_lh.tx_amount_per_day
 select * from demo_lh.tx_amount_per_user
 ```
 
+```sql tx_per_hour
+select * from demo_lh.tx_per_hour
+```
+
+```sql tx_per_country
+select * from demo_lh.tx_per_country
+```
+
 ```sql tx_by_type
 select * from demo_lh.tx_by_type
 ```
@@ -75,6 +83,33 @@ select * from demo_lh.users_by_country
   x=day
   y=tx_count
   title="Daily Transaction Count"
+/>
+
+### Transactions per Hour
+
+<BarChart
+  data={tx_per_hour}
+  x=hour
+  y=tx_count
+  title="Transaction Count per Hour"
+/>
+
+### Transactions Volume per Country
+
+<BarChart
+  data={tx_per_country}
+  x=country
+  y=total_amount
+  title="Transaction Volume by Country ($)"
+/>
+
+### Transactions Count per Country
+
+<BarChart
+  data={tx_per_country}
+  x=country
+  y=tx_count
+  title="Transaction Count by Country"
 />
 
 ### Top 20 Users by Transaction Amount
