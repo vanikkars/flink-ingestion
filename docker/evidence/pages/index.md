@@ -2,43 +2,11 @@
 title: Flink Lakehouse Dashboard
 ---
 
-# Flink Lakehouse Dashboard
+# Flink LakeHouse Dashboard
 
 Real-time data ingested from Kafka into Iceberg via Apache Flink.
 
 ---
-
-```sql kpis
-select * from demo_lh.kpis
-```
-
-```sql tx_amount_per_day
-select * from demo_lh.tx_amount_per_day
-```
-
-```sql tx_amount_per_user
-select * from demo_lh.tx_amount_per_user
-```
-
-```sql tx_per_hour
-select * from demo_lh.tx_per_hour
-```
-
-```sql tx_per_country
-select * from demo_lh.tx_per_country
-```
-
-```sql tx_by_type
-select * from demo_lh.tx_by_type
-```
-
-```sql tx_by_status
-select * from demo_lh.tx_by_status
-```
-
-```sql users_by_country
-select * from demo_lh.users_by_country
-```
 
 ## Key Metrics
 
@@ -94,7 +62,7 @@ select * from demo_lh.users_by_country
   yFmt=usd0k
 />
 
-#### Transaction Count per Day
+[//]: # (#### Transaction Count per Day)
 
 <BarChart
   data={tx_amount_per_day}
@@ -104,7 +72,8 @@ select * from demo_lh.users_by_country
 />
 
 ### Detailed View
-#### Transactions per Hour
+
+[//]: # (#### Transactions per Hour)
 
 <BarChart
   data={tx_per_hour}
@@ -131,7 +100,7 @@ select * from demo_lh.users_by_country
   title="Transaction Count by Country"
 />
 
-#### Top 20 Users by Transaction Amount
+[//]: # (#### Top 20 Users by Transaction Amount)
 
 <BarChart
   data={tx_amount_per_user}
@@ -147,7 +116,7 @@ select * from demo_lh.users_by_country
 
 ## Users
 
-### Users per Country
+[//]: # (### Users per Country)
 
 <BarChart
   data={users_by_country}
@@ -156,3 +125,44 @@ select * from demo_lh.users_by_country
   title="Users by Country"
   swapXY=true
 />
+
+
+---
+<details>
+<summary>KPIs sql defintion </summary>
+Thease queries are used as source for the charts above. Thus do not delete them.
+The complexity of queries is hidden by the sql files in source. The queries below mostly reference the output fo these quries.
+
+```sql kpis
+select * from demo_lh.kpis
+```
+
+```sql tx_amount_per_day
+select * from demo_lh.tx_amount_per_day
+```
+
+```sql tx_amount_per_user
+select * from demo_lh.tx_amount_per_user
+```
+
+```sql tx_per_hour
+select * from demo_lh.tx_per_hour
+```
+
+```sql tx_per_country
+select * from demo_lh.tx_per_country
+```
+
+```sql tx_by_type
+select * from demo_lh.tx_by_type
+```
+
+```sql tx_by_status
+select * from demo_lh.tx_by_status
+```
+
+```sql users_by_country
+select * from demo_lh.users_by_country
+```
+
+</details>
