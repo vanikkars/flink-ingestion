@@ -1,49 +1,12 @@
-# Kafka → Iceberg via Flink (Docker demo)
+# Kafka → Iceberg via Flink 
 
 A self-contained demo that streams synthetic JSON events from Kafka into Apache
 Iceberg tables using Apache Flink, with a live BI dashboard powered by Evidence.
 
 ## Architecture
 
-```
-┌──────────────┐    users / transactions
-│ kafka-       │  ────────────────────────▶  Kafka topics (KRaft)
-│ producer     │                                      │
-│ (Python)     │                           Flink SQL connector
-└──────────────┘                                      │
-                                                      ▼
-                                          ┌───────────────────────┐
-                                          │ Flink (JobManager +   │
-                                          │        TaskManager)   │
-                                          │  kafka_users  ──┐     │
-                                          │  kafka_txns   ──┴──▶ INSERT INTO
-                                          └──────────┬────────────┘
-                                                     │ Iceberg / Parquet
-                                                     ▼
-                                          ┌───────────────────────┐
-                                          │ MinIO                 │
-                                          │ s3://iceberg-warehouse│
-                                          └──────────┬────────────┘
-                                                     │ REST catalog API
-                                                     ▼
-                                          ┌───────────────────────┐
-                                          │ Nessie                │
-                                          │ (Iceberg REST catalog)│
-                                          └──────────┬────────────┘
-                                                     │ ATTACH (REST)
-                                                     ▼
-                                          ┌───────────────────────┐
-                                          │ DuckDB                │
-                                          │ (httpfs + iceberg ext)│
-                                          └──────────┬────────────┘
-                                                     │
-                              ┌──────────────────────┴──────────────────────┐
-                              ▼                                              ▼
-                  ┌───────────────────────┐                ┌───────────────────────┐
-                  │ Evidence BI           │                │ JupyterLab            │
-                  │ (dashboard :3000)     │                │ (exploration :8888)   │
-                  └───────────────────────┘                └───────────────────────┘
-```
+![high level architecture.png](pics/high_level_architecture.png)
+
 
 ## Services
 
