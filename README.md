@@ -39,15 +39,26 @@ Two topics are produced by the Python producer:
 
 **users**
 ```json
-{ "user_id": "user-001", "name": "Alice Smith", "email": "alice.smith1@example.com",
-  "country": "US", "created_at": "2024-04-22T10:00:00.000" }
+{ 
+   "user_id": "user-001", 
+   "name": "Alice Smith", 
+   "email": "alice.smith1@example.com",
+   "country": "US", 
+   "created_at": "2024-04-22T10:00:00.000"
+}
 ```
 
 **transactions**
 ```json
-{ "transaction_id": "txn-000001", "user_id": "user-001", "amount": 149.99,
-  "currency": "USD", "type": "PURCHASE", "status": "COMPLETED",
-  "event_time": "2024-04-22T10:00:00.000" }
+{ 
+   "transaction_id": "txn-000001", 
+   "user_id": "user-001", 
+   "amount": 149.99,
+   "currency": "USD", 
+   "type": "PURCHASE", 
+   "status": "COMPLETED",
+   "event_time": "2024-04-22T10:00:00.000"
+}
 ```
 
 Users are seeded upfront so transactions always reference a valid `user_id`.
